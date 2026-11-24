@@ -1,0 +1,14 @@
+# EcoVision AI - Requirements File for Deployment
+# Compatible with both local Windows 11 and Linux Cloud environments (Streamlit Cloud, Hugging Face)
+
+torch>=2.2.0
+torchvision>=0.17.0
+ultralytics>=8.3.0
+opencv-python-headless>=4.9.0.80
+streamlit>=1.32.0
+numpy>=1.24.0
+Pillow>=10.0.0
+matplotlib>=3.8.0
+requests>=2.31.0
+pyyaml>=6.0.1
+psutil>=5.8.0

@@ -1,0 +1,29 @@
+# Python Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Datasets (Keep huge 10k image dataset local, model weights are in model/)
+dataset/images/
+dataset/labels/
+dataset/raw_download/
+GARBAGE-CLASSIFICATION-3-2/
+*.zip
+
+# Training runs & caches
+runs/
+*.cache
+wandb/
+
+# Python cache & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+Desktop.ini

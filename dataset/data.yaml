@@ -1,0 +1,11 @@
+path: C:/Users/chand/Desktop/AI_waste_classification/dataset
+train: images/train
+val: images/val
+test: images/test
+nc: 5
+names:
+- Organic
+- Plastic
+- Glass
+- Paper
+- Metal
