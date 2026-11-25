@@ -5,11 +5,10 @@ Framework: Streamlit & Ultralytics YOLO11n
 
 Pages:
   1. 🌿 Home Dashboard
-  2. 📹 Live Webcam Detection
-  3. 🖼️ Upload Image
-  4. 📊 Detection History & Analytics
-  5. ♻️ Waste Disposal Guide
-  6. ℹ️ About Project
+  2. 🖼️ Upload Image
+  3. 📊 Detection History & Analytics
+  4. ♻️ Waste Disposal Guide
+  5. ℹ️ About Project
 """
 
 import sys
@@ -58,9 +57,6 @@ if css_path.exists():
 if "history" not in st.session_state:
     st.session_state.history = []
 
-if "camera_running" not in st.session_state:
-    st.session_state.camera_running = False
-
 MODEL_PATH = BASE_DIR / "model" / "waste_yolo11n.pt"
 
 # Cache detector so we do not reload the model on every UI interaction
@@ -84,7 +80,6 @@ with st.sidebar:
         "Navigation Menu",
         [
             "🌿 Home Dashboard",
-            "📹 Live Webcam Detection",
             "🖼️ Upload Image",
             "📊 Detection History",
             "♻️ Waste Disposal Guide",
@@ -170,164 +165,15 @@ if page == "🌿 Home Dashboard":
     st.markdown("### 🚀 Quick Navigation")
     q_col1, q_col2 = st.columns(2)
     with q_col1:
-        st.info("📹 **Live Webcam**: Point your laptop webcam at waste objects for instant real-time bounding boxes and segregation advice.")
+        st.success("🖼️ **Upload Image**: Select waste photos (JPG, PNG) to test detection accuracy, locate multiple items, and view bounding boxes.")
     with q_col2:
-        st.success("🖼️ **Upload Image**: Select waste photos (JPG, PNG) from your laptop to test detection accuracy and explore disposal tips.")
+        st.info("📊 **Detection History**: View session-based analytics, category statistics, and real-time distribution charts.")
 
     st.markdown(f"<div class='eco-disclaimer'>{get_disclaimer()}</div>", unsafe_allow_html=True)
 
 
 # -----------------------------------------------------------------------------
-# PAGE 2: Live Webcam Detection
-# -----------------------------------------------------------------------------
-elif page == "📹 Live Webcam Detection":
-    st.markdown("## 📹 Live Webcam Waste Detection")
-    st.markdown("Point your laptop webcam at waste items (bottles, paper, cans, peelings) to see real-time bounding boxes and disposal suggestions.")
-
-    # Check for model weights
-    if not MODEL_PATH.exists():
-        st.error(
-            "❌ Model weights not found at `model/waste_yolo11n.pt`.\n\n"
-            "Please train the model first by executing `python train.py` in your terminal."
-        )
-        st.stop()
-
-    # Settings Row
-    ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([2, 2, 2])
-    with ctrl_col1:
-        conf_slider = st.slider("Detection Confidence Threshold", min_value=0.20, max_value=0.90, value=0.40, step=0.05)
-    with ctrl_col2:
-        start_btn = st.button("▶️ Start Camera", use_container_width=True, type="primary")
-    with ctrl_col3:
-        stop_btn = st.button("⏹️ Stop Camera", use_container_width=True)
-
-    if start_btn:
-        st.session_state.camera_running = True
-    if stop_btn:
-        st.session_state.camera_running = False
-
-    # Video stream placeholder
-    stream_placeholder = st.empty()
-    status_placeholder = st.empty()
-    results_placeholder = st.empty()
-
-    if st.session_state.camera_running:
-        status_placeholder.info("Connecting to built-in webcam via DirectShow...")
-        detector = load_cached_detector(str(MODEL_PATH), conf_threshold=conf_slider)
-        if detector is None:
-            st.error("Failed to initialize detection engine.")
-            st.session_state.camera_running = False
-            st.stop()
-
-        # Connect to webcam using DirectShow
-        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-        if not cap.isOpened():
-            # Fallback to default backend
-            cap.release()
-            cap = cv2.VideoCapture(0)
-
-        if not cap.isOpened():
-            status_placeholder.error(
-                "❌ Could not access your webcam. Please check:\n"
-                "1. Windows Camera Privacy Settings (Settings -> Privacy & Security -> Camera).\n"
-                "2. Ensure no other application (Zoom, Teams, Chrome) is using the camera.\n"
-                "3. Check your HP keyboard camera privacy key."
-            )
-            st.session_state.camera_running = False
-        else:
-            status_placeholder.success("🟢 Camera streaming active. Point waste objects towards camera.")
-            fps_tracker = []
-
-            try:
-                while st.session_state.camera_running:
-                    t_start = time.perf_counter()
-                    ret, frame = cap.read()
-                    if not ret or frame is None:
-                        status_placeholder.warning("⚠️ Failed to grab video frame.")
-                        break
-
-                    # Run YOLO detection
-                    annotated_frame, detections = detector.predict(frame, draw_hud=True)
-
-                    # Calculate FPS
-                    t_latency = (time.perf_counter() - t_start) * 1000.0
-                    fps_val = 1000.0 / t_latency if t_latency > 0 else 0
-                    fps_tracker.append(fps_val)
-                    if len(fps_tracker) > 10:
-                        fps_tracker.pop(0)
-                    avg_fps = np.mean(fps_tracker)
-
-                    # Overlay FPS HUD
-                    cv2.putText(
-                        annotated_frame,
-                        f"FPS: {avg_fps:.1f} ({t_latency:.0f}ms)",
-                        (15, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        (0, 255, 0),
-                        2
-                    )
-
-                    # Convert BGR to RGB for Streamlit display
-                    frame_rgb = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
-                    stream_placeholder.image(frame_rgb, channels="RGB", use_container_width=True)
-
-                    # Log detections into history and display info cards
-                    if detections:
-                        cards_html = "<div style='display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;'>"
-                        for det in detections:
-                            info = det["info"]
-                            cname = det["class_name"]
-                            c_conf = det["confidence"] * 100
-
-                            # Add to session history
-                            st.session_state.history.append({
-                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                "category": cname,
-                                "confidence": f"{c_conf:.1f}%",
-                                "source": "Webcam"
-                            })
-
-                            cards_html += f"""
-                            <div class="eco-card" style="flex: 1; min-width: 200px; border-left: 5px solid {info['color_hex']}; padding: 10px;">
-                                <strong>{info['icon']} {cname} ({c_conf:.1f}%)</strong><br/>
-                                <small style="color: {info['color_hex']};"><strong>{info['bin_type']}</strong></small><br/>
-                                <small>{info['disposal_suggestion']}</small>
-                            </div>
-                            """
-                        cards_html += "</div>"
-                        results_placeholder.markdown(cards_html, unsafe_allow_html=True)
-                    else:
-                        results_placeholder.caption("No waste object currently detected in view.")
-
-            finally:
-                cap.release()
-                status_placeholder.info("Camera stopped and hardware released.")
-    else:
-        stream_placeholder.info("Click '▶️ Start Camera' above to activate live detection.")
-
-    st.markdown("---")
-    st.markdown("### 📸 Alternate: Snapshot Input")
-    st.caption("You can also take a quick snapshot using your camera:")
-    cam_snap = st.camera_input("Capture Waste Snapshot")
-    if cam_snap is not None:
-        pil_snap = Image.open(cam_snap)
-        detector = load_cached_detector(str(MODEL_PATH), conf_threshold=conf_slider)
-        if detector:
-            ann_bgr, dets = detector.predict(pil_snap, draw_hud=True)
-            ann_rgb = cv2.cvtColor(ann_bgr, cv2.COLOR_BGR2RGB)
-            st.image(ann_rgb, caption="Snapshot Detection Result", use_container_width=True)
-
-            if dets:
-                st.success(f"Detected {len(dets)} waste item(s):")
-                for d in dets:
-                    st.write(f"- **{d['info']['icon']} {d['class_name']}** ({d['confidence']*100:.1f}%) -> {d['info']['disposal_suggestion']}")
-            else:
-                st.warning("No waste object detected in snapshot.")
-
-
-# -----------------------------------------------------------------------------
-# PAGE 3: Upload Image Detection
+# PAGE 2: Upload Image Detection
 # -----------------------------------------------------------------------------
 elif page == "🖼️ Upload Image":
     st.markdown("## 🖼️ Upload Waste Image for Classification")
@@ -410,7 +256,7 @@ elif page == "🖼️ Upload Image":
 
 
 # -----------------------------------------------------------------------------
-# PAGE 4: Detection History & Statistics
+# PAGE 3: Detection History & Statistics
 # -----------------------------------------------------------------------------
 elif page == "📊 Detection History":
     st.markdown("## 📊 Session Detection History & Analytics")
@@ -419,7 +265,7 @@ elif page == "📊 Detection History":
     history = st.session_state.history
 
     if not history:
-        st.info("ℹ️ No detections recorded in this session yet. Test the Webcam or Upload an image to view live analytics.")
+        st.info("ℹ️ No detections recorded in this session yet. Upload an image to view live analytics.")
     else:
         # KPI metrics
         total_detections = len(history)
@@ -496,7 +342,7 @@ elif page == "📊 Detection History":
 
 
 # -----------------------------------------------------------------------------
-# PAGE 5: Waste Disposal Guide
+# PAGE 4: Waste Disposal Guide
 # -----------------------------------------------------------------------------
 elif page == "♻️ Waste Disposal Guide":
     st.markdown("## ♻️ Comprehensive Waste Segregation & Disposal Guide")
@@ -519,7 +365,7 @@ elif page == "♻️ Waste Disposal Guide":
 
 
 # -----------------------------------------------------------------------------
-# PAGE 6: About Project
+# PAGE 5: About Project
 # -----------------------------------------------------------------------------
 elif page == "ℹ️ About Project":
     st.markdown("## ℹ️ About EcoVision AI")
@@ -536,7 +382,7 @@ elif page == "ℹ️ About Project":
         - **Computer Vision & Object Detection**: Ultralytics YOLO11n (Nano architecture, ~2.6M parameters)
         - **Inference Runtime**: PyTorch (CPU-optimized build, zero external GPU dependency)
         - **Streamlit Web Dashboard**: Interactive UI with session analytics and HUD overlays
-        - **Frame Processing**: OpenCV (DirectShow Windows 11 backend)
+        - **Image Processing**: OpenCV & Pillow (Color conversion and bounding-box rendering)
         - **Programming Language**: Python 3.11.9 (64-bit)
         """
     )
