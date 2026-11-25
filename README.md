@@ -38,7 +38,6 @@ Built specifically for local execution on Windows 11, the system utilizes the cu
 * **Processor (CPU)**: **Intel(R) Core(TM) Ultra 7 255U** (14 logical cores, Meteor Lake architecture)
 * **RAM**: **32 GB Total** (~16.7 GB available headroom)
 * **Execution Mode**: **CPU Native** (No NVIDIA GPU or Jetson Nano required)
-* **Camera Interface**: Built-in HP webcam integrated via OpenCV's **DirectShow (`cv2.CAP_DSHOW`)** backend to eliminate lag.
 
 ---
 
@@ -71,13 +70,6 @@ cd C:\Users\chand\Desktop\AI_waste_classification
 # Activate virtual environment
 .\.venv\Scripts\Activate.ps1
 ```
-
-### Step 2: Test Webcam Hardware
-Verify that your laptop camera connects via DirectShow without errors:
-```powershell
-python webcam_test.py
-```
-*(Press **`q`** to close the camera test window)*
 
 ### Step 3: Train or Fine-Tune YOLO11n Model
 Train the model on your Intel Core Ultra 7 CPU using the verified 5-class dataset:
@@ -121,7 +113,6 @@ AI_waste_classification/
 ├── app.py                          # Streamlit Multi-Page Web Dashboard
 ├── train.py                        # Automated YOLO11n model training pipeline
 ├── detect.py                       # Standalone offline inference testing script
-├── webcam_test.py                  # Standalone camera hardware diagnostic tool
 ├── benchmark.py                    # Empirical latency, FPS, and RAM benchmark
 ├── download_dataset.py             # Dataset downloader, remapper & verification runner
 ├── requirements.txt                # Pinned dependencies
@@ -152,13 +143,10 @@ AI_waste_classification/
 
 ## 🛡️ 7. Troubleshooting & Common Questions
 
-1. **Camera Not Opening**:
-   - Verify Windows 11 privacy permissions: `Settings -> Privacy & Security -> Camera -> Allow desktop apps to access camera`.
-   - Ensure other video applications (Teams, Zoom, Discord, Chrome) are closed.
-2. **Inference Latency Optimization**:
+1. **Inference Latency Optimization**:
    - The default resolution is set to $416 \times 416$ for high responsiveness on CPU.
    - Adjust the confidence threshold slider in the dashboard to fine-tune sensitivity.
-3. **Model Weights Missing Warning**:
+2. **Model Weights Missing Warning**:
    - Ensure you run `python train.py` once to generate `model/waste_yolo11n.pt`.
 
 ---
